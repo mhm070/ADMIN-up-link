@@ -1,22 +1,26 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Admin Link Pool API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: pools
+    description: Link pool operations
+  - name: links
+    description: Link operations
+  - name: stats
+    description: Statistics operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +28,285 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /pools:
+    get:
+      operationId: listPools
+      tags: [pools]
+      summary: List all link pools
+      responses:
+        "200":
+          description: List of pools
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pool"
+    post:
+      operationId: createPool
+      tags: [pools]
+      summary: Create a new link pool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PoolInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pool"
+
+  /pools/{id}:
+    get:
+      operationId: getPool
+      tags: [pools]
+      summary: Get a pool by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Pool
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pool"
+        "404":
+          description: Not found
+    patch:
+      operationId: updatePool
+      tags: [pools]
+      summary: Update a pool
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PoolUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pool"
+    delete:
+      operationId: deletePool
+      tags: [pools]
+      summary: Delete a pool
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /pools/{id}/links:
+    get:
+      operationId: listPoolLinks
+      tags: [links]
+      summary: List links in a pool
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Link"
+
+  /links:
+    get:
+      operationId: listLinks
+      tags: [links]
+      summary: List all links
+      parameters:
+        - name: poolId
+          in: query
+          required: false
+          schema:
+            type: ["integer", "null"]
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: List of links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Link"
+    post:
+      operationId: createLink
+      tags: [links]
+      summary: Create a new link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Link"
+
+  /links/{id}:
+    get:
+      operationId: getLink
+      tags: [links]
+      summary: Get a link by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Link"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateLink
+      tags: [links]
+      summary: Update a link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Link"
+    delete:
+      operationId: deleteLink
+      tags: [links]
+      summary: Delete a link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /links/{id}/click:
+    post:
+      operationId: recordLinkClick
+      tags: [links]
+      summary: Record a click on a link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Click recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Link"
+
+  /stats/overview:
+    get:
+      operationId: getStatsOverview
+      tags: [stats]
+      summary: Get overall statistics
+      responses:
+        "200":
+          description: Overview stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsOverview"
+
+  /stats/top-links:
+    get:
+      operationId: getTopLinks
+      tags: [stats]
+      summary: Get top clicked links
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Top links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Link"
+
+  /stats/pool-breakdown:
+    get:
+      operationId: getPoolBreakdown
+      tags: [stats]
+      summary: Per-pool link count and click stats
+      responses:
+        "200":
+          description: Pool breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PoolStat"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +317,132 @@ components:
       required:
         - status
 
+    Pool:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        linkCount:
+          type: ["integer", "null"]
+        totalClicks:
+          type: ["integer", "null"]
+
+    PoolInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        color:
+          type: string
+
+    PoolUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        color:
+          type: string
+
+    Link:
+      type: object
+      required: [id, title, url, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        url:
+          type: string
+        description:
+          type: ["string", "null"]
+        poolId:
+          type: ["integer", "null"]
+        poolName:
+          type: ["string", "null"]
+        poolColor:
+          type: ["string", "null"]
+        clicks:
+          type: integer
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+
+    LinkInput:
+      type: object
+      required: [title, url]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        url:
+          type: string
+        description:
+          type: string
+        poolId:
+          type: ["integer", "null"]
+        isActive:
+          type: boolean
+
+    LinkUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        url:
+          type: string
+        description:
+          type: string
+        poolId:
+          type: ["integer", "null"]
+        isActive:
+          type: boolean
+
+    StatsOverview:
+      type: object
+      required: [totalLinks, totalPools, totalClicks, activeLinks]
+      properties:
+        totalLinks:
+          type: integer
+        totalPools:
+          type: integer
+        totalClicks:
+          type: integer
+        activeLinks:
+          type: integer
+        recentLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+
+    PoolStat:
+      type: object
+      required: [poolId, poolName, linkCount, totalClicks]
+      properties:
+        poolId:
+          type: integer
+        poolName:
+          type: string
+        poolColor:
+          type: ["string", "null"]
+        linkCount:
+          type: integer
+        totalClicks:
+          type: integer
