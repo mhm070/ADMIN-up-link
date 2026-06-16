@@ -1,24 +1,425 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>Admin Link Pool</title>
-    <meta name="description" content="Admin Link Pool — built on Replit. Update this description to reflect the app." />
-    <meta name="robots" content="index, follow" />
-    <meta property="og:title" content="Admin Link Pool" />
-    <meta property="og:description" content="Admin Link Pool — built on Replit. Update this description to reflect the app." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Admin Link Pool" />
-    <meta name="twitter:description" content="Admin Link Pool — built on Replit. Update this description to reflect the app." />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Link Pool</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Be Vietnam Pro', sans-serif;
+  background: #09090f;
+  color: #dde2f0;
+  min-height: 100vh;
+  padding: 24px 16px 60px;
+}
+#root { max-width: 640px; margin: 0 auto; }
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
+@keyframes spin   { to{transform:rotate(360deg);} }
+@keyframes pulse  { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+@keyframes toastIn{ from{opacity:0;transform:translateX(-50%) translateY(12px);} to{opacity:1;transform:translateX(-50%) translateY(0);} }
+@keyframes toastOut{from{opacity:1;transform:translateX(-50%) translateY(0);} to{opacity:0;transform:translateX(-50%) translateY(8px);} }
+
+.fade-up  { animation: fadeUp .4s ease both; }
+.spinner  { width:28px;height:28px;border:2.5px solid #1e3050;border-top-color:#53d8fb;border-radius:50%;animation:spin .75s linear infinite; }
+
+/* ── cards ── */
+.card {
+  background: #111420;
+  border: 1px solid #1c2340;
+  border-radius: 16px;
+  padding: 22px 20px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: .68rem; font-weight: 700; letter-spacing: .22em;
+  text-transform: uppercase; color: #3a5a8a; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title::after { content:''; flex:1; height:1px; background: linear-gradient(90deg,#1c2340,transparent); }
+
+/* ── stat row ── */
+.stat-row { display:flex; gap:10px; margin-bottom:16px; }
+.stat-box {
+  flex:1; background:#0d1220; border:1px solid #1c2340; border-radius:12px;
+  padding:14px 12px; text-align:center;
+}
+.stat-num { font-size:clamp(28px,8vw,38px); font-weight:900; line-height:1; letter-spacing:-1px; }
+.stat-lbl { font-size:.65rem; color:#3a5a8a; margin-top:4px; text-transform:uppercase; letter-spacing:.1em; }
+
+/* ── mode toggle ── */
+.mode-row { display:flex; gap:8px; margin-bottom:14px; }
+.mode-btn {
+  flex:1; padding:9px 0; border-radius:9px; font-family:inherit;
+  font-size:.78rem; font-weight:600; cursor:pointer; border:1px solid #1c2340;
+  background:transparent; color:#3a5a8a; transition:all .2s;
+}
+.mode-btn.on { border-color:#53d8fb44; color:#53d8fb; background:#53d8fb0d; }
+
+/* ── drop zone ── */
+.dropzone {
+  border: 2px dashed #1c2340; border-radius: 12px; padding: 36px 20px;
+  text-align: center; cursor: pointer; transition: all .2s;
+  background: #0d1220;
+}
+.dropzone.over  { border-color:#53d8fb; background:#53d8fb08; }
+.dropzone.ready { border-color:#1ade8f; background:#1ade8f08; }
+.dropzone input { display:none; }
+
+/* ── buttons ── */
+.btn {
+  width:100%; padding:13px 0; border:none; border-radius:10px;
+  font-family:inherit; font-size:.85rem; font-weight:700; cursor:pointer;
+  transition:all .2s; margin-top:10px;
+}
+.btn-upload { background:linear-gradient(135deg,#1a5c3a,#1ade8f22); border:1px solid #1ade8f44; color:#1ade8f; }
+.btn-cancel { background:transparent; border:1px solid #1c2340; color:#3a5a8a; }
+.btn-danger { background:transparent; border:1px solid #5a2020; color:#cc4444; width:auto; padding:5px 14px; font-size:.74rem; border-radius:8px; }
+
+/* ── pool rows ── */
+.pool-row {
+  background:#0a1018; border:1px solid #1c2340; border-radius:11px;
+  padding:13px 15px; display:flex; align-items:flex-start; gap:10px;
+  margin-bottom:8px;
+}
+.pool-sec  { font-family:monospace; font-size:.72rem; color:#7ab3d0; text-transform:uppercase; letter-spacing:.08em; }
+.pool-cnt  { font-family:monospace; font-size:.72rem; color:#3a6080; margin-left:8px; }
+.pool-preview { font-family:monospace; font-size:.7rem; color:#2a5070; margin-top:4px; word-break:break-all; line-height:1.5; }
+
+/* ── hint ── */
+.hint-box {
+  background:#0a1018; border:1px solid #141c2e; border-radius:11px;
+  padding:16px 18px;
+}
+pre { font-family:monospace; font-size:.72rem; color:#3a6080; line-height:1.9; }
+
+/* ── toast ── */
+.toast {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  background:#1c2a40; border:1px solid #2a4060; color:#a8d8ea;
+  border-radius:24px; padding:9px 22px; font-size:.82rem; font-weight:600;
+  z-index:999; white-space:nowrap;
+}
+.toast.in  { animation:toastIn  .28s ease both; }
+.toast.out { animation:toastOut .24s ease forwards; }
+
+/* ── live dot ── */
+.live-dot { width:6px;height:6px;border-radius:50%;background:#1ade8f;display:inline-block;margin-right:6px;animation:pulse 2s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+const POOL_KEY = "linkpool:sections";
+
+/* ── CẤU HÌNH GITHUB ── */
+const REPO_OWNER = "mhm070";
+const REPO_NAME = "i-know-i-sharee";
+const FILE_PATH = "links.txt";
+
+// Lấy Token động qua prompt để bảo mật
+let GITHUB_TOKEN = localStorage.getItem("my_github_token");
+if (!GITHUB_TOKEN) {
+  GITHUB_TOKEN = prompt("Vui lòng nhập GitHub Token của bạn để truy cập Admin:");
+  if (GITHUB_TOKEN) {
+    localStorage.setItem("my_github_token", GITHUB_TOKEN);
+  }
+}
+
+/* parse .txt */
+function parseTxt(text) {
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  const sections = {}; let cur = "Default";
+  for (const line of lines) {
+    const m = line.match(/^\[(.+)\]$/) || line.match(/^##\s+(.+)$/);
+    if (m) { cur = m[1].trim(); continue; }
+    if (!sections[cur]) sections[cur] = [];
+    sections[cur].push(line);
+  }
+  return sections;
+}
+
+/* ── XỬ LÝ LƯU TRỮ GITHUB API ── */
+
+// Hàm 1: Chuyển dữ liệu Object của React thành định dạng file Text chuẩn
+function convertPoolToTxt(poolData) {
+  if (!poolData) return "";
+  let textResult = "";
+  for (const [section, links] of Object.entries(poolData)) {
+    textResult += `[${section}]\n`;
+    links.forEach(link => {
+      textResult += `${link}\n`;
+    });
+    textResult += "\n";
+  }
+  return textResult.trim();
+}
+
+// Hàm 2: Đọc file trực tiếp từ GitHub thông qua API
+async function loadPool() {
+  const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+  try {
+    const response = await fetch(apiUrl, {
+      headers: {
+        "Authorization": `token ${GITHUB_TOKEN}`,
+        "Accept": "application/vnd.github.v3.raw"
+      }
+    });
+    if (!response.ok) return null;
+    const textData = await response.text();
+    return parseTxt(textData);
+  } catch (error) {
+    console.error("Lỗi khi kéo dữ liệu từ GitHub:", error);
+    return null;
+  }
+}
+
+// Hàm 3: Ghi đè file lên GitHub
+async function savePool(data) {
+  const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+  const rawTextContent = data ? convertPoolToTxt(data) : "";
+  const base64Content = btoa(unescape(encodeURIComponent(rawTextContent)));
+
+  try {
+    let currentSha = null;
+    // Bước 1: Lấy mã SHA của file cũ
+    const getRes = await fetch(apiUrl, {
+      headers: { 
+        "Authorization": `token ${GITHUB_TOKEN}`,
+        "Accept": "application/vnd.github.v3+json"
+      }
+    });
+    if (getRes.ok) {
+      const fileMeta = await getRes.json();
+      currentSha = fileMeta.sha;
+    }
+
+    // Bước 2: Đẩy file mới lên
+    const body = {
+      message: "Admin update link pool",
+      content: base64Content
+    };
+    if (currentSha) body.sha = currentSha;
+
+    const putRes = await fetch(apiUrl, {
+      method: "PUT",
+      headers: {
+        "Authorization": `token ${GITHUB_TOKEN}`,
+        "Content-Type": "application/json",
+        "Accept": "application/vnd.github.v3+json"
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!putRes.ok) throw new Error("GitHub API từ chối cập nhật.");
+  } catch (error) {
+    console.error("Lỗi khi lưu lên GitHub:", error);
+    throw error;
+  }
+}
+
+/* ── Toast ── */
+function Toast({ msg, phase }) {
+  if (!msg) return null;
+  return <div className={`toast ${phase}`}>{msg}</div>;
+}
+
+/* ── Main Admin ── */
+function Admin() {
+  const [pool, setPool]         = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [mode, setMode]         = useState("replace");
+  const [dragOver, setDragOver] = useState(false);
+  const [preview, setPreview]   = useState(null);
+  const [toast, setToast]       = useState({ msg:"", phase:"" });
+  const fileRef = useRef();
+  const toastTimer = useRef();
+
+  const showToast = (msg) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ msg, phase:"in" });
+    toastTimer.current = setTimeout(() => {
+      setToast(t => ({ ...t, phase:"out" }));
+      setTimeout(() => setToast({ msg:"", phase:"" }), 300);
+    }, 2200);
+  };
+
+  const refresh = useCallback(async () => {
+    const d = await loadPool();
+    setPool(d); setLoading(false);
+  }, []);
+
+  // Đã gỡ bỏ setInterval để tránh lỗi giới hạn API của GitHub
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const processFile = (file) => {
+    if (!file?.name.endsWith(".txt")) { showToast("❌ Chỉ nhận file .txt"); return; }
+    const reader = new FileReader();
+    reader.onload = e => { setPreview({ parsed: parseTxt(e.target.result), fileName: file.name }); };
+    reader.readAsText(file);
+  };
+
+  const handleUpload = async () => {
+    if (!preview) return;
+    let newPool;
+    if (mode === "replace") {
+      newPool = { ...preview.parsed };
+    } else {
+      const cur = pool || {};
+      newPool = { ...cur };
+      for (const [sec, links] of Object.entries(preview.parsed)) {
+        const set = new Set(newPool[sec] || []);
+        links.forEach(l => set.add(l));
+        newPool[sec] = [...set];
+      }
+    }
+    await savePool(newPool);
+    setPool(newPool);
+    setPreview(null);
+    const total = Object.values(newPool).reduce((s, a) => s + a.length, 0);
+    showToast(`✓ Đã nạp ${total} links vào pool`);
+  };
+
+  const delSection = async (sec) => {
+    const updated = { ...pool }; delete updated[sec];
+    const next = Object.keys(updated).length ? updated : null;
+    await savePool(next); setPool(next);
+    showToast(`Đã xoá section "${sec}"`);
+  };
+
+  const clearAll = async () => {
+    await savePool(null); setPool(null);
+    showToast("Đã xoá toàn bộ pool");
+  };
+
+  const total  = pool ? Object.values(pool).reduce((s, a) => s + a.length, 0) : 0;
+  const secCnt = pool ? Object.keys(pool).length : 0;
+
+  if (loading) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div className="spinner"/>
+    </div>
+  );
+
+  return (
+    <>
+      <Toast msg={toast.msg} phase={toast.phase} />
+
+      {/* Header */}
+      <div className="fade-up" style={{textAlign:"center",marginBottom:28}}>
+        <div style={{display:"inline-flex",alignItems:"center",fontSize:".68rem",fontWeight:700,letterSpacing:".2em",textTransform:"uppercase",color:"#ff6b35",background:"#ff6b3512",border:"1px solid #ff6b3530",padding:"4px 14px",borderRadius:20,marginBottom:12}}>
+          ⚙ Admin Panel
+        </div>
+        <h1 style={{fontSize:"clamp(22px,6vw,30px)",fontWeight:900,letterSpacing:"-1px",color:"#eef2ff"}}>Quản lý Link Pool</h1>
+        <p style={{color:"#2a4060",fontSize:".82rem",marginTop:6}}>
+          <span className="live-dot"/>Kết nối trực tiếp GitHub API
+        </p>
+      </div>
+
+      {/* Stats */}
+      <div className="stat-row fade-up" style={{animationDelay:".05s"}}>
+        <div className="stat-box">
+          <div className="stat-num" style={{color:"#ff6b35"}}>{total}</div>
+          <div className="stat-lbl">Links còn</div>
+        </div>
+        <div className="stat-box">
+          <div className="stat-num" style={{color:"#53d8fb"}}>{secCnt}</div>
+          <div className="stat-lbl">Sections</div>
+        </div>
+      </div>
+
+      {/* Upload */}
+      <div className="card fade-up" style={{animationDelay:".1s"}}>
+        <div className="card-title">↑ Nạp file link mới</div>
+
+        <div className="mode-row">
+          {[["replace","🔄 Thay thế"],["append","➕ Gộp thêm"]].map(([v,l]) => (
+            <button key={v} className={`mode-btn ${mode===v?"on":""}`} onClick={() => setMode(v)}>{l}</button>
+          ))}
+        </div>
+
+        <div
+          className={`dropzone${dragOver?" over":""}${preview?" ready":""}`}
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={e => { e.preventDefault(); setDragOver(false); processFile(e.dataTransfer.files[0]); }}
+          onClick={() => fileRef.current.click()}
+        >
+          {preview ? (
+            <>
+              <div style={{fontSize:32,marginBottom:8}}>📄</div>
+              <p style={{fontWeight:700,color:"#1ade8f",marginBottom:4}}>{preview.fileName}</p>
+              <p style={{fontSize:".72rem",color:"#3a7a5a"}}>
+                {Object.entries(preview.parsed).map(([s,l]) => `${s}: ${l.length}`).join(" · ")} links
+              </p>
+            </>
+          ) : (
+            <>
+              <div style={{fontSize:36,marginBottom:10}}>📂</div>
+              <p style={{color:"#3a6080",fontSize:".85rem"}}>Kéo file .txt vào đây hoặc click để chọn</p>
+            </>
+          )}
+          <input ref={fileRef} type="file" accept=".txt" onChange={e => processFile(e.target.files[0])} />
+        </div>
+
+        {preview && (
+          <div style={{display:"flex",gap:8,marginTop:10}}>
+            <button className="btn btn-upload" style={{margin:0}} onClick={handleUpload}>
+              ↑ Nạp vào pool ({mode === "replace" ? "thay thế" : "gộp thêm"})
+            </button>
+            <button className="btn btn-cancel" style={{margin:0,width:"auto",padding:"0 18px"}} onClick={() => setPreview(null)}>Huỷ</button>
+          </div>
+        )}
+      </div>
+
+      {/* Current pool */}
+      {pool && secCnt > 0 && (
+        <div className="card fade-up" style={{animationDelay:".15s"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div className="card-title" style={{margin:0}}>📋 Pool hiện tại</div>
+            <button className="btn-danger" onClick={clearAll}>Xoá tất cả</button>
+          </div>
+          {Object.entries(pool).map(([sec, links]) => (
+            <div className="pool-row" key={sec}>
+              <div style={{flex:1}}>
+                <span className="pool-sec">{sec}</span>
+                <span className="pool-cnt">{links.length} links</span>
+                <div className="pool-preview">
+                  {links[0] || "—"}
+                  {links.length > 1 && <span style={{color:"#1c3040"}}> +{links.length-1} nữa</span>}
+                </div>
+              </div>
+              <button className="btn-danger" onClick={() => delSection(sec)}>Xoá</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Format hint */}
+      <div className="hint-box fade-up" style={{animationDelay:".2s"}}>
+        <p style={{fontSize:".68rem",color:"#1e3050",textTransform:"uppercase",letterSpacing:".15em",marginBottom:10,fontWeight:700}}>Format file .txt</p>
+        <pre>{`[Spotify Premium]
+https://gist.github.com/user/abc123/raw/spotify.conf
+https://gist.github.com/user/xyz456/raw/spotify2.conf
+
+[Locket Gold]
+https://gist.github.com/user/locket1/raw/locket.conf`}</pre>
+        <p style={{fontSize:".7rem",color:"#1e3050",marginTop:10}}>
+          Plain list (không có section) cũng được — tất cả sẽ vào section "Default".
+        </p>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Admin />);
+</script>
+</body>
 </html>
