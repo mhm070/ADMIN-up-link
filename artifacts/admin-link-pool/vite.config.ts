@@ -29,7 +29,7 @@ if (!basePath) {
 export default defineConfig({
   base: basePath,
   plugins: [
-    react(),
+    react({ fastRefresh: false }),
     tailwindcss(),
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== "production" &&
