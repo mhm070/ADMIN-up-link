@@ -9,7 +9,6 @@ const GITHUB_TARGET = {
 } as const;
 const { owner: REPO_OWNER, repository: REPO_NAME, branch: GITHUB_BRANCH, filePath: FILE_PATH } = GITHUB_TARGET;
 const TOKEN_KEY = 'goc-share:gh-token';
-const RAW_URL = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${GITHUB_BRANCH}/${FILE_PATH}`;
 const ENV_TOKEN = import.meta.env.VITE_GITHUB_TOKEN?.trim() || null;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -37,15 +36,20 @@ function poolToTxt(pool: Pool): string {
 }
 
 // ─── GitHub API ───────────────────────────────────────────────────────────────
-const apiUrl = (includeBranch = false) => {
+const apiUrl = (includeBranch = false, cacheBust = false) => {
   const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
-  return includeBranch ? `${url}?ref=${encodeURIComponent(GITHUB_BRANCH)}` : url;
+  const params = new URLSearchParams();
+  if (includeBranch) params.set('ref', GITHUB_BRANCH);
+  if (cacheBust) params.set('t', String(new Date().getTime()));
+  const query = params.toString();
+  return query ? `${url}?${query}` : url;
 };
 
-function githubHeaders(token: string, accept: string): HeadersInit {
+function githubHeaders(token: string): HeadersInit {
   return {
     Authorization: `Bearer ${token}`,
-    Accept: accept,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
   };
 }
 
@@ -57,6 +61,12 @@ function encodeBase64Utf8(value: string): string {
     binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
   }
   return btoa(binary);
+}
+
+function decodeBase64Utf8(value: string): string {
+  const binary = atob(value.replace(/\s/g, ''));
+  const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }
 
 async function githubError(response: Response): Promise<Error> {
@@ -71,20 +81,22 @@ async function githubError(response: Response): Promise<Error> {
 }
 
 async function loadPool(token: string): Promise<Pool> {
-  // Use the same public raw-file URL as the consumer-facing site. GitHub's
-  // raw CDN can cache this URL, so every read gets a unique query string.
-  const res = await fetch(RAW_URL + '?t=' + new Date().getTime(), {
+  const res = await fetch(apiUrl(true, true), {
     cache: 'no-store',
-    headers: githubHeaders(token, 'application/vnd.github.v3.raw'),
+    headers: githubHeaders(token),
   });
   if (!res.ok) throw await githubError(res);
-  return parseTxt(await res.text());
+  const data = await res.json() as { content?: string; encoding?: string };
+  if (!data.content || data.encoding !== 'base64') {
+    throw new Error('GitHub không trả về nội dung links.txt hợp lệ.');
+  }
+  return parseTxt(decodeBase64Utf8(data.content));
 }
 
 async function getLatestFileSha(token: string): Promise<string | null> {
   const res = await fetch(apiUrl(true), {
     cache: 'no-store',
-    headers: githubHeaders(token, 'application/vnd.github.v3+json'),
+    headers: githubHeaders(token),
   });
   if (res.status === 404) return null;
   if (!res.ok) throw await githubError(res);
@@ -105,7 +117,7 @@ async function savePool(pool: Pool | null, token: string): Promise<void> {
     const res = await fetch(apiUrl(), {
       method: 'DELETE',
       headers: {
-        ...githubHeaders(token, 'application/vnd.github.v3+json'),
+        ...githubHeaders(token),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -129,7 +141,7 @@ async function savePool(pool: Pool | null, token: string): Promise<void> {
   const res = await fetch(apiUrl(), {
     method: 'PUT',
     headers: {
-      ...githubHeaders(token, 'application/vnd.github.v3+json'),
+      ...githubHeaders(token),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
