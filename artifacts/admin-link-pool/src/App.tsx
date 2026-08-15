@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
-const REPO_OWNER = 'mhm070';
-const REPO_NAME  = 'i-know-i-sharee';
-const FILE_PATH  = 'links.txt';
-const TOKEN_KEY  = 'goc-share:gh-token';
-const RAW_URL    = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/${FILE_PATH}`;
+const GITHUB_TARGET = {
+  owner: 'mhm070',
+  repository: 'i-know-i-sharee',
+  branch: 'main',
+  filePath: 'links.txt',
+} as const;
+const { owner: REPO_OWNER, repository: REPO_NAME, branch: GITHUB_BRANCH, filePath: FILE_PATH } = GITHUB_TARGET;
+const TOKEN_KEY = 'goc-share:gh-token';
+const RAW_URL = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${GITHUB_BRANCH}/${FILE_PATH}`;
+const ENV_TOKEN = import.meta.env.VITE_GITHUB_TOKEN?.trim() || null;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Pool    = Record<string, string[]>;
@@ -32,8 +37,10 @@ function poolToTxt(pool: Pool): string {
 }
 
 // ─── GitHub API ───────────────────────────────────────────────────────────────
-const apiUrl = () =>
-  `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+const apiUrl = (includeBranch = false) => {
+  const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+  return includeBranch ? `${url}?ref=${encodeURIComponent(GITHUB_BRANCH)}` : url;
+};
 
 function githubHeaders(token: string, accept: string): HeadersInit {
   return {
@@ -63,21 +70,19 @@ async function githubError(response: Response): Promise<Error> {
   return new Error(`GitHub ${response.status}${detail}`);
 }
 
-async function loadPool(token: string): Promise<Pool | null> {
-  try {
-    // Use the same public raw-file URL as the consumer-facing site. GitHub's
-    // raw CDN can cache this URL, so every read gets a unique query string.
-    const res = await fetch(RAW_URL + '?t=' + new Date().getTime(), {
-      cache: 'no-store',
-      headers: githubHeaders(token, 'application/vnd.github.v3.raw'),
-    });
-    if (!res.ok) return null;
-    return parseTxt(await res.text());
-  } catch { return null; }
+async function loadPool(token: string): Promise<Pool> {
+  // Use the same public raw-file URL as the consumer-facing site. GitHub's
+  // raw CDN can cache this URL, so every read gets a unique query string.
+  const res = await fetch(RAW_URL + '?t=' + new Date().getTime(), {
+    cache: 'no-store',
+    headers: githubHeaders(token, 'application/vnd.github.v3.raw'),
+  });
+  if (!res.ok) throw await githubError(res);
+  return parseTxt(await res.text());
 }
 
 async function getLatestFileSha(token: string): Promise<string | null> {
-  const res = await fetch(apiUrl(), {
+  const res = await fetch(apiUrl(true), {
     cache: 'no-store',
     headers: githubHeaders(token, 'application/vnd.github.v3+json'),
   });
@@ -89,6 +94,8 @@ async function getLatestFileSha(token: string): Promise<string | null> {
 }
 
 async function savePool(pool: Pool | null, token: string): Promise<void> {
+  if (!token.trim()) throw new Error('GitHub token is missing.');
+
   // Always fetch the absolute latest SHA immediately before a mutation.
   // GitHub requires it for updates and rejects stale/missing SHAs.
   const sha = await getLatestFileSha(token);
@@ -103,16 +110,18 @@ async function savePool(pool: Pool | null, token: string): Promise<void> {
       },
       body: JSON.stringify({
         message: 'admin: delete link pool',
+        branch: GITHUB_BRANCH,
         sha,
       }),
     });
-    if (!res.ok) throw await githubError(res);
+    if (res.status !== 200) throw await githubError(res);
     return;
   }
 
   const content = encodeBase64Utf8(poolToTxt(pool));
   const body: Record<string, string> = {
     message: 'admin: update link pool',
+    branch: GITHUB_BRANCH,
     content,
   };
   if (sha) body.sha = sha;
@@ -125,7 +134,7 @@ async function savePool(pool: Pool | null, token: string): Promise<void> {
     },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw await githubError(res);
+  if (res.status !== 200 && res.status !== 201) throw await githubError(res);
 }
 
 // ─── Styles (injected) ───────────────────────────────────────────────────────
@@ -248,12 +257,19 @@ function TokenGate({ onToken }: { onToken: (t: string) => void }) {
   const submit = async () => {
     const t = val.trim();
     if (!t) return;
-    setBusy(true); setErr('');
-    const pool = await loadPool(t);
-    setBusy(false);
-    if (pool === null) { setErr('Token không hợp lệ hoặc không có quyền truy cập.'); return; }
-    localStorage.setItem(TOKEN_KEY, t);
-    onToken(t);
+    setBusy(true);
+    setErr('');
+    try {
+      await loadPool(t);
+      localStorage.setItem(TOKEN_KEY, t);
+      onToken(t);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Không thể đọc dữ liệu từ GitHub.';
+      alert(message);
+      setErr(message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -296,8 +312,14 @@ function AdminPanel({ token, onLogout }: { token: string; onLogout: () => void }
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
-    const d = await loadPool(token);
-    setPool(d); setLoading(false);
+    try {
+      const d = await loadPool(token);
+      setPool(d);
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : 'Không thể đọc dữ liệu từ GitHub.');
+    } finally {
+      setLoading(false);
+    }
   }, [token]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -325,10 +347,13 @@ function AdminPanel({ token, onLogout }: { token: string; onLogout: () => void }
     }
     try {
       await savePool(newPool, token);
+      // savePool only resolves for a successful GitHub PUT (200/201).
       setPool(newPool); setPreview(null);
       show(`✓ Đã nạp ${Object.values(newPool).reduce((s, a) => s + a.length, 0)} links lên GitHub`);
     } catch (e: unknown) {
-      show(`❌ ${e instanceof Error ? e.message : 'Lỗi không xác định'}`);
+      const message = e instanceof Error ? e.message : 'Lỗi không xác định';
+      alert(message);
+      show(`❌ ${message}`);
     } finally { setSaving(false); }
   };
 
@@ -336,15 +361,30 @@ function AdminPanel({ token, onLogout }: { token: string; onLogout: () => void }
     const u = { ...pool }; delete u[sec];
     const next = Object.keys(u).length ? u : null;
     setSaving(true);
-    try { await savePool(next, token); setPool(next); show(`Đã xoá "${sec}"`); }
-    catch { show('❌ Lỗi khi lưu'); }
+    try {
+      await savePool(next, token);
+      // savePool only resolves for a successful GitHub PUT/DELETE.
+      setPool(next);
+      show(`Đã xoá "${sec}"`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Lỗi khi lưu';
+      alert(message);
+      show(`❌ ${message}`);
+    }
     finally { setSaving(false); }
   };
 
   const clearAll = async () => {
     setSaving(true);
-    try { await savePool(null, token); setPool(null); show('Đã xoá toàn bộ pool'); }
-    catch { show('❌ Lỗi khi lưu'); }
+    try {
+      await savePool(null, token);
+      setPool(null);
+      show('Đã xoá toàn bộ pool');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Lỗi khi lưu';
+      alert(message);
+      show(`❌ ${message}`);
+    }
     finally { setSaving(false); }
   };
 
@@ -479,7 +519,7 @@ https://gist.github.com/user/lk/raw/locket.conf`}</pre>
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const [token, setToken] = useState<string | null>(() => ENV_TOKEN ?? localStorage.getItem(TOKEN_KEY));
 
   // inject CSS once
   useEffect(() => {
