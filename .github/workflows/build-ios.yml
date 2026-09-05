@@ -1,0 +1,74 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.24.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build Vite frontend
+        working-directory: artifacts/admin-link-pool
+        env:
+          PORT: 5173
+          BASE_PATH: /
+        run: pnpm run build
+
+      - name: Sync Capacitor iOS project
+        working-directory: artifacts/admin-link-pool
+        run: npx cap sync ios
+
+      - name: Resolve Swift Package dependencies
+        working-directory: artifacts/admin-link-pool/ios/App
+        run: xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
+
+      - name: Archive unsigned iOS app
+        working-directory: artifacts/admin-link-pool/ios/App
+        run: >-
+          xcodebuild archive
+          -project App.xcodeproj
+          -scheme App
+          -configuration Release
+          -sdk iphoneos
+          -archivePath "$GITHUB_WORKSPACE/build/LocketGold.xcarchive"
+          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO
+          CODE_SIGN_IDENTITY=""
+
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build/Payload
+          mkdir -p build/Payload
+          cp -R build/LocketGold.xcarchive/Products/Applications/App.app build/Payload/App.app
+          cd build
+          zip -qry LocketGold-unsigned.ipa Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: locket-gold-ios-ipa
+          path: build/LocketGold-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
