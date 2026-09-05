@@ -31,7 +31,10 @@ jobs:
           pnpm --version
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: |
+          rm -rf node_modules
+          pnpm store prune
+          pnpm install --no-frozen-lockfile --ignore-scripts
 
       - name: Build Vite frontend
         working-directory: artifacts/admin-link-pool
