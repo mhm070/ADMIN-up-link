@@ -1,0 +1,6 @@
+{
+	"appId": "com.locketgold.admin",
+	"appName": "Locket Gold Admin",
+	"webDir": "dist",
+	"packageClassList": []
+}
