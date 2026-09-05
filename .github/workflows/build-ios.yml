@@ -32,9 +32,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          rm -rf node_modules
+          rm -rf node_modules package-lock.json
           pnpm store prune
-          pnpm install --no-frozen-lockfile --ignore-scripts
+          pnpm install --no-frozen-lockfile
 
       - name: Build Vite frontend
         working-directory: artifacts/admin-link-pool
