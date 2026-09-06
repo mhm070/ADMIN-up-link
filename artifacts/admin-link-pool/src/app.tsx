@@ -321,6 +321,7 @@ function AdminPanel({ token, onLogout }: { token: string; onLogout: () => void }
   const [mode, setMode]         = useState<'replace' | 'append'>('replace');
   const [dragOver, setDragOver] = useState(false);
   const [preview, setPreview]   = useState<Preview | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const { toast, show }         = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -371,6 +372,7 @@ function AdminPanel({ token, onLogout }: { token: string; onLogout: () => void }
   };
 
   const delSection = async (sec: string) => {
+    if (!pool) return;
     const u = { ...pool }; delete u[sec];
     const next = Object.keys(u).length ? u : null;
     setSaving(true);
@@ -385,6 +387,34 @@ function AdminPanel({ token, onLogout }: { token: string; onLogout: () => void }
       show(`❌ ${message}`);
     }
     finally { setSaving(false); }
+  };
+
+  const toggleSection = (section: string) => {
+    setExpandedSections((current) => {
+      const next = new Set(current);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  };
+
+  const delLink = async (section: string, linkIndex: number) => {
+    if (!pool?.[section]) return;
+    const next = { ...pool, [section]: pool[section].filter((_, index) => index !== linkIndex) };
+    if (next[section].length === 0) delete next[section];
+    const nextPool = Object.keys(next).length ? next : null;
+    setSaving(true);
+    try {
+      await savePool(nextPool, token);
+      setPool(nextPool);
+      show('Đã xoá link');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Lỗi khi lưu';
+      alert(message);
+      show(`❌ ${message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const clearAll = async () => {
@@ -498,19 +528,24 @@ function AdminPanel({ token, onLogout }: { token: string; onLogout: () => void }
             <div className="ct" style={{ margin: 0 }}>📋 Pool hiện tại</div>
             <button className="bd" onClick={clearAll} disabled={saving}>Xoá tất cả</button>
           </div>
-          {Object.entries(pool).map(([sec, links]) => (
-            <div className="pr" key={sec}>
-              <div style={{ flex: 1 }}>
-                <span className="ps">{sec}</span>
-                <span className="pc">{links.length} links</span>
-                <div className="pp">
-                  {links[0] || '—'}
-                  {links.length > 1 && <span style={{ color: '#1c3040' }}> +{links.length - 1} nữa</span>}
-                </div>
-              </div>
-              <button className="bd" onClick={() => delSection(sec)} disabled={saving}>Xoá</button>
-            </div>
-          ))}
+          {Object.entries(pool).map(([sec, links]) => {
+            const isExpanded = expandedSections.has(sec);
+            return (
+              <article className={`pool-section${isExpanded ? ' is-expanded' : ''}`} key={sec}>
+                <button className="pool-section__header cursor-pointer relative z-20" type="button" onClick={() => toggleSection(sec)} aria-expanded={isExpanded}>
+                  <span className="pool-section__chevron" aria-hidden="true">›</span>
+                  <span className="pool-section__summary"><span><span className="pool-section__name">{sec}</span><span className="pool-section__count">{links.length} links</span></span><span className="pool-section__preview">{links[0] || '—'}</span></span>
+                  <span className="pool-section__state">{isExpanded ? 'Thu gọn' : 'Mở rộng'}</span>
+                </button>
+                {isExpanded && (
+                  <div className="pool-section__body">
+                    {links.map((link, linkIndex) => <div className="pool-link" key={`${link}-${linkIndex}`}><span className="pool-link__url">{link}</span><button className="pool-link__delete" type="button" onClick={() => delLink(sec, linkIndex)} disabled={saving}>Xoá</button></div>)}
+                    <button className="pool-section__remove" type="button" onClick={() => delSection(sec)} disabled={saving}>Xoá section này</button>
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
 

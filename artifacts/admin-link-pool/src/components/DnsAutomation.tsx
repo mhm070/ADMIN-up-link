@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 type Account = { email?: string; password?: string; link?: string };
+const API_BASE = (import.meta.env.VITE_API_URL?.trim() || 'http://localhost:8080').replace(/\/$/, '');
 
 export function DnsAutomation() {
   const [password, setPassword] = useState('helloae123');
@@ -20,7 +21,7 @@ export function DnsAutomation() {
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     setError(''); setLogs([]); setAccounts([]); setRunning(true);
     const params = new URLSearchParams({ password, count, domains });
-    const source = new EventSource(`/automation/run?${params}`);
+    const source = new EventSource(`${API_BASE}/automation/run?${params.toString()}`);
     source.onmessage = (event) => {
       const data = JSON.parse(event.data) as { type: string; message?: string; data?: Account };
       if (data.type === 'log' && data.message) setLogs((current) => [...current, data.message!]);
