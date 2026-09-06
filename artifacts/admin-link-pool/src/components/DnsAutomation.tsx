@@ -88,62 +88,62 @@ export function DnsAutomation() {
   };
 
   return (
-    <section className="dns-panel">
-      <header className="dns-header">
-        <span className="dns-badge">Automation Suite</span>
-        <h1>Locket Gold <span>DNS</span></h1>
-        <p>Professional NextDNS account automation tool</p>
+    <section className="dns-panel p-4 sm:p-6 md:p-8 max-w-3xl mx-auto">
+      <header className="dns-header flex flex-col gap-3 text-center mb-8">
+        <span className="dns-badge text-sm sm:text-base font-semibold px-4 py-2 inline-block mx-auto rounded-full">Automation Suite</span>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mt-2">Locket Gold <span>DNS</span></h1>
+        <p className="text-base sm:text-lg opacity-80 mt-2">Professional NextDNS account automation tool</p>
       </header>
-      <div className="dns-card">
-        <label className="dns-label"><span />Password (Min 8 chars)</label>
-        <input className="dns-input" value={password} onChange={(event) => setPassword(event.target.value)} />
+      <div className="dns-card p-5 sm:p-8 rounded-3xl shadow-lg">
+        <label className="dns-label text-base sm:text-lg font-semibold mb-3 block"><span />Password (Min 8 chars)</label>
+        <input className="dns-input w-full p-4 text-base sm:text-lg rounded-xl min-h-[56px] mb-6" value={password} onChange={(event) => setPassword(event.target.value)} />
         
-        <label className="dns-label"><span />Number of Accounts</label>
-        <input className="dns-input" type="number" min="1" max="10" value={count} onChange={(event) => setCount(event.target.value)} />
+        <label className="dns-label text-base sm:text-lg font-semibold mb-3 block"><span />Number of Accounts</label>
+        <input className="dns-input w-full p-4 text-base sm:text-lg rounded-xl min-h-[56px] mb-6" type="number" min="1" max="10" value={count} onChange={(event) => setCount(event.target.value)} />
         
-        <label className="dns-label"><span />Denylist (1 per line)</label>
-        <textarea className="dns-input dns-textarea" rows={3} value={domains} onChange={(event) => setDomains(event.target.value)} />
+        <label className="dns-label text-base sm:text-lg font-semibold mb-3 block"><span />Denylist (1 per line)</label>
+        <textarea className="dns-input dns-textarea w-full p-4 text-base sm:text-lg rounded-xl min-h-[120px] mb-6" rows={3} value={domains} onChange={(event) => setDomains(event.target.value)} />
         
-        {error && <p className="dns-error">{error}</p>}
+        {error && <p className="dns-error text-red-500 font-medium text-sm sm:text-base mb-4">{error}</p>}
         
-        <button className="dns-start" type="button" onClick={start} disabled={running}>
+        <button className="dns-start w-full py-4 px-6 text-lg sm:text-xl font-bold rounded-xl min-h-[60px] active:scale-95 transition-transform mb-8" type="button" onClick={start} disabled={running}>
           {running ? 'Running automation...' : '⚡ Start Automation'}
         </button>
         
-        <div className="dns-terminal">
-          <div className="dns-terminal-header"><i /><i /><i /><span>automation - log</span></div>
-          <div ref={logRef} className="dns-log-box" aria-live="polite">
-            {logs.map((log, index) => <div key={`${index}-${log}`}>{log}</div>)}
+        <div className="dns-terminal rounded-2xl overflow-hidden shadow-inner">
+          <div className="dns-terminal-header p-4 text-sm sm:text-base flex items-center gap-2"><i /><i /><i /><span className="ml-2 font-mono">automation - log</span></div>
+          <div ref={logRef} className="dns-log-box p-4 sm:p-6 text-sm sm:text-base min-h-[160px] overflow-y-auto" aria-live="polite">
+            {logs.map((log, index) => <div key={`${index}-${log}`} className="mb-2 last:mb-0 leading-relaxed font-mono">{log}</div>)}
           </div>
         </div>
         
         {accounts.length > 0 && (
-          <div style={{ marginTop: '20px' }}>
-            <p style={{ color: '#10d98a', fontWeight: 'bold', marginBottom: '16px' }}>
+          <div className="mt-8 flex flex-col gap-6">
+            <p className="text-[#10d98a] font-bold text-center text-lg sm:text-xl">
               {accounts.length} account(s) generated successfully.
             </p>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <button type="button" onClick={downloadAccounts} className="btn-success">
+            <div className="flex flex-col gap-4">
+              <button type="button" onClick={downloadAccounts} className="btn-success w-full py-4 px-6 text-lg font-bold rounded-xl min-h-[60px] active:scale-95 transition-transform shadow-md">
                 ⬇ Export Accounts & Passwords
               </button>
-              <button type="button" onClick={downloadLinks} className="btn-success">
+              <button type="button" onClick={downloadLinks} className="btn-success w-full py-4 px-6 text-lg font-bold rounded-xl min-h-[60px] active:scale-95 transition-transform shadow-md">
                 ⬇ Export Links Only
               </button>
-              <button type="button" onClick={() => setShowPreview(!showPreview)} className="btn-preview">
+              <button type="button" onClick={() => setShowPreview(!showPreview)} className="btn-preview w-full py-4 px-6 text-lg font-bold rounded-xl min-h-[60px] active:scale-95 transition-transform border-2">
                 👁 {showPreview ? 'Hide Preview' : 'Preview Accounts'}
               </button>
             </div>
             
             {showPreview && (
-              <div style={{ marginTop: '18px', background: 'rgba(5, 12, 26, 0.9)', padding: '18px', borderRadius: '10px', color: '#e8f0ff', fontFamily: 'monospace', whiteSpace: 'pre-wrap', border: '1px solid rgba(56, 120, 255, 0.18)', lineHeight: '1.7' }}>
-                === Generated Accounts ==={'\n\n'}
+              <div className="mt-2 p-5 sm:p-6 rounded-2xl text-sm sm:text-base overflow-x-auto whitespace-pre-wrap leading-relaxed border" style={{ background: 'rgba(5, 12, 26, 0.9)', color: '#e8f0ff', fontFamily: 'monospace', borderColor: 'rgba(56, 120, 255, 0.18)' }}>
+                <span className="font-bold opacity-80 text-blue-300">=== Generated Accounts ===</span>{'\n\n'}
                 {accounts.map((acc, index) => (
                   <React.Fragment key={index}>
-                    [Account {index + 1}]{'\n'}
-                    Email: {acc.email}{'\n'}
-                    Password: {acc.password}{'\n'}
-                    Link: {acc.link}{'\n\n'}
+                    <span className="font-bold text-yellow-300">[Account {index + 1}]</span>{'\n'}
+                    <span className="opacity-70">Email:</span> {acc.email}{'\n'}
+                    <span className="opacity-70">Password:</span> {acc.password}{'\n'}
+                    <span className="opacity-70">Link:</span> {acc.link}{'\n\n'}
                   </React.Fragment>
                 ))}
               </div>
