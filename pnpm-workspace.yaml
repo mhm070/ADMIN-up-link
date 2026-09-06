@@ -36,6 +36,7 @@ minimumReleaseAgeExclude:
 
 packages:
   - artifacts/*
+  - DNS-Locket-Gold
   - lib/*
   - lib/integrations/*
   - scripts
