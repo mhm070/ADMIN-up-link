@@ -39,20 +39,44 @@ export function DnsAutomation() {
     };
   };
 
+  const handleExport = async (content: string, filename: string) => {
+    // 1. Dùng tính năng Share bảng điều khiển của iOS
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: filename, text: content });
+        return;
+      } catch (e) {
+        console.log('Share canceled', e);
+      }
+    }
+    
+    // 2. Dự phòng: Copy thẳng vào Clipboard nếu Share bị lỗi
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(content);
+        alert('Đã copy dữ liệu! Bạn có thể dán vào ứng dụng Ghi chú.');
+        return;
+      }
+    } catch (e) {}
+
+    // 3. Dự phòng: Tải file thông thường cho Web/Máy tính
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const downloadAccounts = () => {
     let content = '[Accounts Data]\n';
     accounts.forEach((acc) => {
         if (acc.email && acc.password) content += `${acc.email} | ${acc.password}\n`;
     });
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'Accounts_And_Passwords.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    handleExport(content, 'Accounts_And_Passwords.txt');
   };
 
   const downloadLinks = () => {
@@ -60,30 +84,31 @@ export function DnsAutomation() {
     accounts.forEach((acc) => {
         if (acc.link && acc.link !== 'Link Not Found') content += `${acc.link}\n`;
     });
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'links.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    handleExport(content, 'links.txt');
   };
 
   return (
     <section className="dns-panel">
-      <header className="dns-header"><span className="dns-badge">Automation Suite</span><h1>Locket Gold <span>DNS</span></h1><p>Professional NextDNS account automation tool</p></header>
+      <header className="dns-header">
+        <span className="dns-badge">Automation Suite</span>
+        <h1>Locket Gold <span>DNS</span></h1>
+        <p>Professional NextDNS account automation tool</p>
+      </header>
       <div className="dns-card">
         <label className="dns-label"><span />Password (Min 8 chars)</label>
         <input className="dns-input" value={password} onChange={(event) => setPassword(event.target.value)} />
+        
         <label className="dns-label"><span />Number of Accounts</label>
         <input className="dns-input" type="number" min="1" max="10" value={count} onChange={(event) => setCount(event.target.value)} />
+        
         <label className="dns-label"><span />Denylist (1 per line)</label>
         <textarea className="dns-input dns-textarea" rows={3} value={domains} onChange={(event) => setDomains(event.target.value)} />
+        
         {error && <p className="dns-error">{error}</p>}
         
-        <button className="dns-start" type="button" onClick={start} disabled={running}>{running ? 'Running automation...' : 'Start Automation'}</button>
+        <button className="dns-start" type="button" onClick={start} disabled={running}>
+          {running ? 'Running automation...' : '⚡ Start Automation'}
+        </button>
         
         <div className="dns-terminal">
           <div className="dns-terminal-header"><i /><i /><i /><span>automation - log</span></div>
@@ -93,20 +118,25 @@ export function DnsAutomation() {
         </div>
         
         {accounts.length > 0 && (
-          <div className="mt-6 flex flex-col gap-3">
-            <p className="text-emerald-400 font-bold mb-2 text-sm">{accounts.length} account(s) generated successfully.</p>
-            <button type="button" onClick={downloadAccounts} className="w-full py-3 rounded-lg font-bold text-white shadow-lg bg-gradient-to-br from-emerald-600 to-emerald-400 hover:scale-[1.01] transition-transform">
-              ⬇ Download Accounts & Passwords
-            </button>
-            <button type="button" onClick={downloadLinks} className="w-full py-3 rounded-lg font-bold text-white shadow-lg bg-gradient-to-br from-emerald-600 to-emerald-400 hover:scale-[1.01] transition-transform">
-              ⬇ Download Links Only
-            </button>
-            <button type="button" onClick={() => setShowPreview(!showPreview)} className="w-full py-3 rounded-lg font-bold text-white shadow-lg bg-gradient-to-br from-violet-700 to-indigo-500 hover:scale-[1.01] transition-transform">
-              👁 {showPreview ? 'Hide Preview' : 'Preview Accounts'}
-            </button>
+          <div style={{ marginTop: '20px' }}>
+            <p style={{ color: '#10d98a', fontWeight: 'bold', marginBottom: '16px' }}>
+              {accounts.length} account(s) generated successfully.
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button type="button" onClick={downloadAccounts} className="btn-success">
+                ⬇ Export Accounts & Passwords
+              </button>
+              <button type="button" onClick={downloadLinks} className="btn-success">
+                ⬇ Export Links Only
+              </button>
+              <button type="button" onClick={() => setShowPreview(!showPreview)} className="btn-preview">
+                👁 {showPreview ? 'Hide Preview' : 'Preview Accounts'}
+              </button>
+            </div>
             
             {showPreview && (
-              <div className="mt-2 p-4 rounded-lg bg-gray-900/90 border border-blue-500/20 text-gray-200 font-mono text-sm whitespace-pre-wrap">
+              <div style={{ marginTop: '18px', background: 'rgba(5, 12, 26, 0.9)', padding: '18px', borderRadius: '10px', color: '#e8f0ff', fontFamily: 'monospace', whiteSpace: 'pre-wrap', border: '1px solid rgba(56, 120, 255, 0.18)', lineHeight: '1.7' }}>
                 === Generated Accounts ==={'\n\n'}
                 {accounts.map((acc, index) => (
                   <React.Fragment key={index}>
