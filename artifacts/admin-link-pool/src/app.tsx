@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { DnsAutomation } from './components/DnsAutomation';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 const GITHUB_TARGET = {
@@ -530,7 +531,7 @@ https://gist.github.com/user/lk/raw/locket.conf`}</pre>
 }
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
-export default function App() {
+function LinkPoolAdmin() {
   const [token, setToken] = useState<string | null>(() => ENV_TOKEN ?? localStorage.getItem(TOKEN_KEY));
 
   // inject CSS once
@@ -546,4 +547,25 @@ export default function App() {
   return token
     ? <AdminPanel token={token} onLogout={() => { localStorage.removeItem(TOKEN_KEY); setToken(null); }} />
     : <TokenGate onToken={setToken} />;
+}
+
+export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState<'dns' | 'pool'>('dns');
+
+  return (
+    <main className="dashboard-shell">
+      <nav className="dashboard-nav" aria-label="Admin tools">
+        <div>
+          <span className="dashboard-kicker">Locket Gold</span>
+          <strong>Admin Dashboard</strong>
+        </div>
+        <div className="dashboard-tabs" role="tablist">
+          <button className={activeTab === 'dns' ? 'active' : ''} type="button" role="tab" aria-selected={activeTab === 'dns'} onClick={() => setActiveTab('dns')}>DNS Automation</button>
+          <button className={activeTab === 'pool' ? 'active' : ''} type="button" role="tab" aria-selected={activeTab === 'pool'} onClick={() => setActiveTab('pool')}>Link Pool Manager</button>
+        </div>
+      </nav>
+      <div className={activeTab === 'dns' ? 'dashboard-pane' : 'dashboard-pane is-hidden'}><DnsAutomation /></div>
+      <div className={activeTab === 'pool' ? 'dashboard-pane' : 'dashboard-pane is-hidden'}><LinkPoolAdmin /></div>
+    </main>
+  );
 }
